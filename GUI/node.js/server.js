@@ -1,6 +1,3 @@
-//const path = require('path');
-//const fs = require('fs');
-
 const path = require('path');
 const fs = require('fs');
 const express = require('express')
@@ -20,7 +17,7 @@ var comport = "";
 var deviceIdx = 3;
 
 
-app.set('port', process.env.PORT || 9988);
+app.set('port', process.env.PORT || 7080);
 
 /* 모든 request(요청)을 받아서 처리하지는 않고, next()로 다음 미들웨어에 넘긴다. */
 app.use((req, res, next) => {
@@ -72,15 +69,19 @@ function detectDevice(com) {
     Port.on('error', function(err) {
 //        console.log('Serial port error : ' + err);
     });
+    Port.on('close', function(err) {
+//        console.log('Serial port error : ' + err);
+        myPort = null;
+    });
 
     parser.on('data', (data) => {
-        console.log(`${com} rx : ${data}`);
+//        console.log(`${com} rx : ${data}`);
 
         var header = data.split(':');
 //        console.log(`split -> ${header[0]}, ${header[1]}`);
         if( (header[0] != undefined) && (header[0] == 'device') ) {
             if( header[1].substring(0,7) == 'ESP8266' ) {
-//                console.log("detect");
+                console.log("ESP8266 detected");
                 comport = com;
                 myPort = Port;
                 deviceIdx = 2;
@@ -128,28 +129,13 @@ app.get('/', function(req, res) {
 })
 */
 
-app.get('/get_device', function(req, res) {
-    if( myPort != null ) {
-//        var str = "0x55 0xAA\n";
-        var str = "getDevice\n";
-        console.log("get_device");
-        detectDevice(myPort.path);
-        deviceIdx = 0;
-        res.send(deviceIdx.toString());
-//        myPort.write(str, function(err, results) {});
-//        result = '';
-//        console.log("get_device : " + result);
-    }
-});
-
-
 app.get('/Send', function(req, res) {
     res.status(204).send("");
 
 //    console.log(req.url);
 //    console.log(req.query);
     var str = req.query.Ctrl + ' ' + req.query.Addr + ' ' + req.query.Data + '\n';
-    console.log("Received Command : "+str);
+//    console.log("Received Command : "+str);
     if( myPort != null ) {
         myPort.write(str, function(err, results) {});
     } else {

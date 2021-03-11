@@ -6,7 +6,7 @@
 
 #include <FS.h>
 
-#include "index.h"
+//#include "index.h"
 
 // WiFi & Network define.
 char ssid[21] = "DS1_2G";
@@ -216,7 +216,7 @@ void setup() {
     }
     loadConfig();
     Serial.printf("SSID : %s, PASSWORD : %s\n", ssid, pass);
-    SPIFFS.end();
+//    SPIFFS.end();
 
     	// AP mode
 	Serial.print("\nSoftrawre AP ");
@@ -253,7 +253,8 @@ void setup() {
 //    }
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
-        request->send_P(200, "text/html", index_html);
+        request->send(SPIFFS, "/index.html", "text/html");
+//        request->send_P(200, "text/html", index_html);
     });
 
     server.on("/Send", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -311,7 +312,7 @@ void setup() {
 
 void xdelay(int e)
 {                                       // 1.009us
-    for(int i=0; i<e; i++) {
+    for(int i=0; i<120; i++) {
 //        __asm__ __volatile__ ("nop\n\t");
 //        __asm__ __volatile__ ("nop\n\t");
         __asm__ __volatile__ ("nop\n\t");
@@ -350,9 +351,9 @@ void clock(int e)
     os_intr_lock();
     while( i < e ) {
         WRITE_PERI_REG(0x60000308, (1<<CTRL));     // Low
-        xdelay(12);
+        delayMicroseconds(9);
         WRITE_PERI_REG(0x60000304, (1<<CTRL));     // High
-        xdelay(11);
+        delayMicroseconds(9);
         i++;
     }
     os_intr_unlock();
