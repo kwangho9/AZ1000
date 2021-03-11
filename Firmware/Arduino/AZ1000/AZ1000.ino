@@ -9,12 +9,11 @@
 #include "index.h"
 
 // WiFi & Network define.
-const char *ssid = "";
-//const char *ssid = "DS1_2G";
-const char *password = "ds12ds!@";
+char ssid[21] = "DS1_2G";
+char pass[21] = "ds12ds!@";
 
 // AP define.
-const char *APssid = "AV1000";
+const char *APssid = "AZ1000";
 const char *APpassword = "12345678";
 const byte DNS_PORT = 53;
 IPAddress APip(192,168,5,1);
@@ -30,6 +29,87 @@ bool valid = false;
 int Ctrl;
 int nAddr;
 int nData;
+
+String Name(String a)
+{
+    String temp = "\"{v}\":";
+    temp.replace("{v}", a);
+    return temp;
+}
+
+String strVal(String s)
+{
+    String temp = "\"{v}\",";
+    temp.replace("{v}", s);
+    return temp;
+}
+
+void stringTo(String ssidTemp, String passTemp)
+{
+    int i;
+    for(i=0; i<ssidTemp.length(); i++) {
+        ssid[i] = ssidTemp[i];
+    }
+    ssid[i] = '\0';
+    for(i=0; i<passTemp.length(); i++) {
+        pass[i] = passTemp[i];
+    }
+    pass[i] = '\0';
+}
+
+bool saveConfig()
+{
+    String value;
+
+    value = Name("SSID") + strVal(ssid);
+    value += Name("PASS") + strVal(pass);
+    File configFile = SPIFFS.open("/config.txt", "w");
+    if( !configFile ) {
+        Serial.println("Failed to open config file for waiting");
+        return false;
+    }
+    configFile.println(value);
+    configFile.close();
+    return true;
+}
+
+String json_parser(String s, String a)
+{
+    String val;
+    if (s.indexOf(a) != -1) {
+        int st_index = s.indexOf(a);
+        int val_index = s.indexOf(':', st_index);
+        if (s.charAt(val_index + 1) == '"') { // 값이 스트링 형식이면
+            int ed_index = s.indexOf('"', val_index + 2);
+            val = s.substring(val_index + 2, ed_index);
+        } else { // 값이 스트링 형식이 아니면
+            int ed_index = s.indexOf(',', val_index + 1);
+            val = s.substring(val_index + 1, ed_index);
+        }
+    } else {
+        Serial.print(a);
+        Serial.println(F(" is not available"));
+    }
+    return val;
+}
+
+bool loadConfig()
+{
+    File configFile = SPIFFS.open("/config.txt", "r");
+    if (!configFile) {
+        Serial.println("Failed to open config file");
+        return false;
+    }
+
+    String line = configFile.readStringUntil('\n');
+//    Serial.println(line);
+    configFile.close();
+    String ssidTemp = json_parser(line, "SSID");
+    String passTemp = json_parser(line, "PASS");
+    stringTo(ssidTemp, passTemp); // String을 배열에 저장
+    return true;
+}
+
 
 void notFound(AsyncWebServerRequest *request) {
 	int params = request->params();
@@ -125,6 +205,18 @@ void setup() {
 
     Serial.println("\nTest Start...");
 
+    Serial.println("Mounting FS ...");
+    if( !SPIFFS.begin() ) {
+        Serial.println("Failed to mount file system");
+        return;
+    }
+
+    if( !SPIFFS.exists("/config.txt") ) {
+        saveConfig();
+    }
+    loadConfig();
+    Serial.printf("SSID : %s, PASSWORD : %s\n", ssid, pass);
+    SPIFFS.end();
 
     	// AP mode
 	Serial.print("\nSoftrawre AP ");
@@ -140,20 +232,25 @@ void setup() {
 
 	dnsServer.setTTL(60);		// 60 sec.
 	dnsServer.setErrorReplyCode(DNSReplyCode::ServerFailure);
-	dnsServer.start(DNS_PORT, "www.av1000.co.kr", APip);
+	dnsServer.start(DNS_PORT, "www.az1000.co.kr", APip);
 
 
 //    scanWiFiList();
-    Serial.println(ssid);
-    if( ssid != "" ) {
+//    Serial.println(ssid);
+//    if( ssid != "" ) {
 	// STATION mode
-	WiFi.begin(ssid, password);
+    int cnt = 0;
+	WiFi.begin(ssid, pass);
 	while ( WiFi.status() != WL_CONNECTED) {
 		Serial.print(".");
 		delay(500);
+        if( ++cnt == 20 ) {
+            Serial.println("");
+            break;
+        }
 	}
 	Serial.println(WiFi.localIP());
-    }
+//    }
 
     server.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
         request->send_P(200, "text/html", index_html);
@@ -291,11 +388,12 @@ void loop()
         char *token;
         uint8_t Bytes[4];
         int nBytes = 0;
+        char *split = " :,.-";
 
         nBytes = Serial.readBytesUntil('\n', buffer, sizeof(buffer));
 //        Serial.println(buffer);
         nBytes = 0;
-        token = strtok(buffer, " ,.-");
+        token = strtok(buffer, split);
 //        Serial.println(token);
 
         if( strncmp(token, "getDevice", 9) == 0 ) {
@@ -303,11 +401,27 @@ void loop()
             return;
 //        } else if( strncmp(token, "#!/bin/av1000", 13) == 0 ) {
 //            Serial.println("enter script!");
+        } else if( strncmp(token, "ssid", 4) == 0 ) {
+            token = strtok(NULL, split);
+            String ss(token);
+
+            token = strtok(NULL, split);
+            if( strncmp(token, "pass", 4) == 0 ) {
+                token = strtok(NULL, split);
+                String ps(token);
+
+                stringTo(ss, ps);
+                SPIFFS.begin();
+                saveConfig();
+                SPIFFS.end();
+                Serial.println("save complete!");
+                ESP.restart();
+            }
         } else {
 
             while( token != NULL ) {
                 Bytes[nBytes++] = strtol(token, 0, 10);
-                token = strtok(NULL, " ,.-");
+                token = strtok(NULL, " :,.-");
             }
 
             Ctrl = Bytes[0];
@@ -330,7 +444,7 @@ void loop()
                 for(int n=0; n<32; n++) buffer[n] = 0;
                 idx = 0;
                 return;
-//            } else if( strncmp(buffer, "#!/bin/av1000", 13) == 0 ) {
+//            } else if( strncmp(buffer, "#!/bin/az1000", 13) == 0 ) {
 //                Serial.println("enter script!");
             } else {
                 char *token;

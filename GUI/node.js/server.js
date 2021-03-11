@@ -18,7 +18,6 @@ var myPort = null;
 var result = "";
 var comport = "";
 var deviceIdx = 3;
-const deviceName = ["PS1030", "PS1060", "PS1120", "NoDevice"];
 
 
 app.set('port', process.env.PORT || 9988);
