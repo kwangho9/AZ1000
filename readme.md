@@ -11,7 +11,13 @@ Hardware(Wemos D1 mini)를 PC와 USB 케이블로 연결한다.
 
 USB Driver(`CH340`)는 미리 설치되어 있어야 한다.
 
-제공된 압축 파일(`vs1000.zip`)을 압축 해제하고, `GUI/node.js/build/app.exe`를 실행한다.
+[GitHub 사이트](https://github.com/kwangho9/AZ1000) 에서 압축된 파일을 다운로드 받는다.
+
+압축 파일(`AZ1000-master.zip`)을 압축 해제하고, `GUI/node.js/build/app._zip` 파일의 확정자를 `zip`으로 변경하고, 다시 압축 해제한다.
+
+![](img/image_005.png)
+
+`app.exe` 파일을 더블 클릭해서 실행한다.
 
 아래 그림과 같이 네트워크 보안 창이 생성된다.
 
